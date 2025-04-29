@@ -36,6 +36,24 @@ class Microscope(QObject):
                 self.emission_filter_wheel = microscope.emission_filter_wheel
             elif USE_OPTOSPIN_EMISSION_FILTER_WHEEL:
                 self.emission_filter_wheel = microscope.emission_filter_wheel
+            self.multipointController = microscope.multipointController
+            self.imageSaver = microscope.imageSaver
+            self.imageDisplay = microscope.imageDisplay
+            
+            # also grab GUI widgets
+            self.wellplateMultiPointWidget = microscope.wellplateMultiPointWidget
+            self.multipointController = microscope.multipointController
+            self.liveControlWidget = microscope.liveControlWidget
+            self.navigationWidget = microscope.navigationWidget
+            self.autofocusWidget = microscope.autofocusWidget
+            self.objectivesWidget = microscope.objectivesWidget
+            self.wellSelectionWidget = microscope.wellSelectionWidget
+            #self.cameraSettingsWidget = microscope.cameraSettingsWidget
+            self.liveControlWidget_focus_camera = microscope.liveControlWidget_focus_camera
+            self.displacementMeasurementWidget = microscope.displacementMeasurementWidget
+            self.laserAutofocusControlWidget = microscope.laserAutofocusControlWidget
+            self.sampleSettingsWidget = microscope.sampleSettingsWidget
+            self.cameraTabWidget = microscope.cameraTabWidget
 
     def initialize_camera(self, is_simulation):
         if is_simulation:

@@ -37,6 +37,9 @@ if __name__ == "__main__":
     parser.add_argument("--live-only", help="Run the GUI only the live viewer.", action='store_true')
     parser.add_argument("--verbose", help="Turn on verbose logging (DEBUG level)", action="store_true")
     args = parser.parse_args()
+    
+    if args.simulation:
+        os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
     log = squid.logging.get_logger("main_hcs")
 
@@ -62,6 +65,13 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     win = gui.HighContentScreeningGui(is_simulation=args.simulation, live_only_mode=args.live_only)
+    win.togglePerformanceMode()
+
+    screen_geometry = app.desktop().screenGeometry()
+    screen_width = screen_geometry.width()
+    screen_height = screen_geometry.height()
+    win.setMaximumSize(screen_width, screen_height)
+    win.resize(int(screen_width*0.8), int(screen_height*0.8))
 
     acq_config_action = QAction("Acquisition Settings", win)
     acq_config_action.triggered.connect(lambda : show_acq_config(win.configurationManager))

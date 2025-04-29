@@ -429,7 +429,7 @@ DEFAULT_MULTIPOINT_NX=1
 DEFAULT_MULTIPOINT_NY=1
 
 ENABLE_FLEXIBLE_MULTIPOINT = True
-USE_OVERLAP_FOR_FLEXIBLE = False
+USE_OVERLAP_FOR_FLEXIBLE = True
 ENABLE_WELLPLATE_MULTIPOINT = True
 ENABLE_RECORDING = False
 
@@ -636,8 +636,8 @@ def read_sample_formats_csv(file_path):
 def load_formats():
     """Load formats, prioritizing cache for sample formats."""
     cache_path = 'cache'
-    parent_dir = os.path.dirname(__file__)
-    default_path = os.path.join(parent_dir, '..','objective_and_sample_formats')
+    parent_dir = os.path.dirname(os.path.abspath(__file__))
+    default_path = os.path.join(parent_dir, '..', 'objective_and_sample_formats')
     #default_path = 'objective_and_sample_formats'
 
     # Load objectives (from default location)
@@ -685,15 +685,20 @@ AWB_RATIOS_R = 1.375
 AWB_RATIOS_G = 1
 AWB_RATIOS_B = 1.4141
 
-try:
-    with open("cache/config_file_path.txt", 'r') as file:
-        for line in file:
-            CACHED_CONFIG_FILE_PATH = line
-            break
-except FileNotFoundError:
-    CACHED_CONFIG_FILE_PATH = None
-
-config_files = glob.glob('.' + '/' + 'configuration*.ini')
+#try:
+parent_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = parent_dir.split('control')[0]
+cache_txt = os.path.join(parent_dir, 'cache/config_file_path.txt')
+with open(cache_txt, 'r') as file:
+    for line in file:
+        CACHED_CONFIG_FILE_PATH = line
+        CACHED_CONFIG_FILE_PATH = CACHED_CONFIG_FILE_PATH.split('/')[-1]
+        break
+CACHED_CONFIG_FILE_PATH = os.path.join(parent_dir, CACHED_CONFIG_FILE_PATH)
+#except FileNotFoundError:
+#    CACHED_CONFIG_FILE_PATH = None
+config_files = glob.glob(parent_dir + '/' + 'configuration*.ini')
+#config_files = glob.glob('.' + '/' + 'configuration*.ini')
 if config_files:
     if len(config_files) > 1:
         if CACHED_CONFIG_FILE_PATH in config_files:
@@ -729,7 +734,7 @@ if config_files:
         myclass = locals()[classkey]
         populate_class_from_dict(myclass,pop_items)
     
-    with open("cache/config_file_path.txt", 'w') as file:
+    with open(cache_txt, 'w') as file:
         file.write(config_files[0])
     CACHED_CONFIG_FILE_PATH = config_files[0]
 else:
@@ -746,7 +751,8 @@ else:
         sys.exit(1)
 
 try:
-    with open("cache/objective_and_sample_format.txt", 'r') as f:
+    cache_txt = os.path.join(parent_dir, 'cache/objective_and_sample_format.txt')
+    with open(cache_txt, 'r') as f:
         cached_settings = json.load(f)
         DEFAULT_OBJECTIVE = cached_settings.get('objective') if cached_settings.get('objective') in OBJECTIVES else '20x'
         WELLPLATE_FORMAT = str(cached_settings.get('wellplate_format'))

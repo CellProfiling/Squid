@@ -108,6 +108,7 @@ class HighContentScreeningGui(QMainWindow):
         self.makeConnections()
 
         self.microscope = control.microscope.Microscope(self)
+        self.microscope.turnOnPerformanceMode = self.turnOnPerformanceMode
 
         # Move to cached position
         if HOMING_ENABLED_X and HOMING_ENABLED_Y and HOMING_ENABLED_Z:
@@ -663,7 +664,9 @@ class HighContentScreeningGui(QMainWindow):
         self.objectivesWidget.signal_objective_changed.connect(self.navigationViewer.on_objective_changed)
         if ENABLE_FLEXIBLE_MULTIPOINT:
             self.objectivesWidget.signal_objective_changed.connect(self.flexibleMultiPointWidget.update_fov_positions)
-        self.navigationController.xyPos.connect(self.navigationViewer.update_current_location)
+        self.navigationController.xyPos.connect(self.navigationViewer.draw_fov_current_location)
+        if WELLPLATE_FORMAT == 'glass slide':
+            self.navigationController.scanGridPos.connect(self.navigationViewer.draw_scan_grid)
         self.multipointController.signal_register_current_fov.connect(self.navigationViewer.register_fov)
         self.multipointController.signal_current_configuration.connect(self.liveControlWidget.set_microscope_mode)
         self.multipointController.signal_z_piezo_um.connect(self.piezoWidget.update_displacement_um_display)
@@ -704,7 +707,7 @@ class HighContentScreeningGui(QMainWindow):
         if ENABLE_WELLPLATE_MULTIPOINT:
             self.wellSelectionWidget.signal_wellSelected.connect(self.wellplateMultiPointWidget.set_well_coordinates)
             self.objectivesWidget.signal_objective_changed.connect(self.wellplateMultiPointWidget.update_coordinates)
-            self.wellplateMultiPointWidget.signal_update_navigation_viewer.connect(self.navigationViewer.update_current_location)
+            self.wellplateMultiPointWidget.signal_update_navigation_viewer.connect(self.navigationViewer.draw_fov_current_location)
 
         if SUPPORT_LASER_AUTOFOCUS:
             self.liveControlWidget_focus_camera.signal_newExposureTime.connect(self.cameraSettingWidget_focus_camera.set_exposure_time)
@@ -861,6 +864,14 @@ class HighContentScreeningGui(QMainWindow):
                     self.imageDisplayTabs.setCurrentIndex(i)
                     break
 
+    def turnOnPerformanceMode(self):
+        self.performance_mode = True
+        self.performanceModeToggle.setChecked(True)
+        self.performanceModeToggle.setText("Disable Performance Mode")
+        self.updateNapariConnections()
+        self.toggleNapariTabs()
+        print("Performance mode enabled")
+    
     def togglePerformanceMode(self):
         self.performance_mode = self.performanceModeToggle.isChecked()
         button_txt = "Disable" if self.performance_mode else "Enable"
@@ -916,11 +927,13 @@ class HighContentScreeningGui(QMainWindow):
             self.toggleWellSelector(False)
             self.multipointController.inverted_objective = False
             self.navigationController.inverted_objective = False
+            self.navigationController.scanGridPos.connect(self.navigationViewer.draw_scan_grid)
             self.setupSlidePositionController(is_for_wellplate=False)
         else:
             self.toggleWellSelector(True)
             self.multipointController.inverted_objective = True
             self.navigationController.inverted_objective = True
+            self.navigationController.scanGridPos.disconnect(self.navigationViewer.draw_scan_grid)
             self.setupSlidePositionController(is_for_wellplate=True)
 
             if format_ == '1536 well plate':
