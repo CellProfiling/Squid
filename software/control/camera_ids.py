@@ -9,14 +9,16 @@ from ids_peak_ipl import ids_peak_ipl
 from ids_peak import ids_peak_ipl_extension
 
 import squid.logging
+
 log = squid.logging.get_logger(__name__)
+
 
 def get_sn_by_model(model_name):
     ids_peak.Library.Initialize()
     device_manager = ids_peak.DeviceManager.Instance()
     device_manager.Update()
     if device_manager.Devices().empty():
-        log.error('iDS camera not found.')
+        log.error("iDS camera not found.")
         # TODO(imo): Propagate error in some way and handle
         return
     devices = device_manager.Devices()
@@ -25,8 +27,8 @@ def get_sn_by_model(model_name):
         nodemap = dev.RemoteDevice().NodeMaps()[i]
         sn = nodemap.FindNode("DeviceSerialNumber").Value()
         mn = nodemap.FindNode("DeviceModelName").Value()
-        #if mn == model_name:
-            #return nodemap.FindNode("DeviceSerialNumber").Value()
+        # if mn == model_name:
+        # return nodemap.FindNode("DeviceSerialNumber").Value()
         log.debug(f"get_sn_by_model: {mn}")
         return sn
 
@@ -36,7 +38,9 @@ def get_sn_by_model(model_name):
 
 
 class Camera(object):
-    def __init__(self, sn=None, resolution=(1920,1080), is_global_shutter=False, rotate_image_angle=None, flip_image=None):
+    def __init__(
+        self, sn=None, resolution=(1920, 1080), is_global_shutter=False, rotate_image_angle=None, flip_image=None
+    ):
         self.log = squid.logging.get_logger(self.__class__.__name__)
 
         ids_peak.Library.Initialize()
@@ -71,7 +75,7 @@ class Camera(object):
         self.GAIN_STEP = 0.01
         self.EXPOSURE_TIME_MS_MIN = 0.015
         self.EXPOSURE_TIME_MS_MAX = 1999
-        
+
         self.rotate_image_angle = rotate_image_angle
         self.flip_image = flip_image
         self.is_global_shutter = is_global_shutter
@@ -93,18 +97,18 @@ class Camera(object):
     def open(self, index=0):
         self.device_manager.Update()
         if self.device_manager.Devices().empty():
-            self.log.error('iDS camera not found.')
+            self.log.error("iDS camera not found.")
             # TODO(imo): Propagate error in some way and handle
             return
         self.device = self.device_manager.Devices()[index].OpenDevice(ids_peak.DeviceAccessType_Control)
         if self.device is None:
-            self.log.error('Cannot open iDS camera.')
+            self.log.error("Cannot open iDS camera.")
             # TODO(imo): Propagate error in some way and handle
             return
         self.nodemap = self.device.RemoteDevice().NodeMaps()[0]
 
         self._camera_init()
-        self.log.info('iDS camera opened.')
+        self.log.info("iDS camera opened.")
 
     def open_by_sn(self, sn):
         self.device_manager.Update()
@@ -114,26 +118,28 @@ class Camera(object):
             if sn == nodemap.FindNode("DeviceSerialNumber").Value():
                 self.device = dev.OpenDevice(ids_peak.DeviceAccessType_Control)
                 if self.device is None:
-                    self.log.error('Cannot open iDS camera.')
+                    self.log.error("Cannot open iDS camera.")
                     # TODO(imo): Propagate error in some way and handle
                     return
                 self.nodemap = nodemap
                 self._camera_init()
-                self.log.info(f'iDS camera opened by sn={sn}.')
+                self.log.info(f"iDS camera opened by sn={sn}.")
                 return
-        self.log.error('No iDS camera is opened.')
+        self.log.error("No iDS camera is opened.")
         # TODO(imo): Propagate error in some way and handle
         return
 
     def _camera_init(self):
         gain_node = self.nodemap.FindNode("Gain")
-        self.log.info(f'gain: min={gain_node.Minimum()}, max={gain_node.Maximum()}, increment={gain_node.Increment()}')
+        self.log.info(f"gain: min={gain_node.Minimum()}, max={gain_node.Maximum()}, increment={gain_node.Increment()}")
 
         # initialize software trigger
         entries = []
         for entry in self.nodemap.FindNode("TriggerSelector").Entries():
-            if (entry.AccessStatus() != ids_peak.NodeAccessStatus_NotAvailable
-                and entry.AccessStatus() != ids_peak.NodeAccessStatus_NotImplemented):
+            if (
+                entry.AccessStatus() != ids_peak.NodeAccessStatus_NotAvailable
+                and entry.AccessStatus() != ids_peak.NodeAccessStatus_NotImplemented
+            ):
                 entries.append(entry.SymbolicValue())
 
         if len(entries) == 0:
@@ -193,16 +199,16 @@ class Camera(object):
         image = self.read_frame(no_wait=True, buffer=buffer)
         if image is False:
             # TODO(imo): Propagate error in some way and handle
-            self.log.error('Cannot get new frame from buffer.')
+            self.log.error("Cannot get new frame from buffer.")
             return
         if self.image_locked:
             # TODO(imo): Propagate error in some way and handle
-            self.log.error('Last image is still being processed; a frame is dropped')
+            self.log.error("Last image is still being processed; a frame is dropped")
             return
 
         self.current_frame = image
         self.frame_ID_software += 1
-        self.frame_ID += 1 
+        self.frame_ID += 1
 
         # frame ID for hardware triggered acquisition
         if self.trigger_mode == TriggerMode.HARDWARE:
@@ -263,19 +269,19 @@ class Camera(object):
         self.nodemap.FindNode("TriggerSource").SetCurrentEntry("Line0")
         self.trigger_mode = TriggerMode.HARDWARE
 
-    def set_pixel_format(self, pixel_format): 
+    def set_pixel_format(self, pixel_format):
         self.log.debug(f"Pixel format={pixel_format}")
         was_streaming = False
         if self.is_streaming:
             was_streaming = True
             self.stop_streaming()
         try:
-            if pixel_format == 'MONO10':
+            if pixel_format == "MONO10":
                 self.nodemap.FindNode("PixelFormat").SetCurrentEntry("Mono10g40IDS")
-            elif pixel_format == 'MONO12':
+            elif pixel_format == "MONO12":
                 self.nodemap.FindNode("PixelFormat").SetCurrentEntry("Mono12g24IDS")
             else:
-                raise Exception('Wrong pixel format.')
+                raise Exception("Wrong pixel format.")
             self.pixel_format = pixel_format
 
             if was_streaming:
@@ -287,7 +293,7 @@ class Camera(object):
         if self.is_streaming:
             self.nodemap.FindNode("TriggerSoftware").Execute()
             self.nodemap.FindNode("TriggerSoftware").WaitUntilDone()
-            self.log.debug('Trigger sent')
+            self.log.debug("Trigger sent")
 
     def read_frame(self, no_wait=False, buffer=None):
         if not no_wait:
@@ -295,16 +301,18 @@ class Camera(object):
             self.log.debug("Buffered image!")
 
         # Convert image and make deep copy
-        if self.pixel_format == 'MONO10':
+        if self.pixel_format == "MONO10":
             output_pixel_format = ids_peak_ipl.PixelFormatName_Mono10
-        elif self.pixel_format == 'MONO12':
+        elif self.pixel_format == "MONO12":
             output_pixel_format = ids_peak_ipl.PixelFormatName_Mono12
 
         ipl_image = ids_peak_ipl_extension.BufferToImage(buffer)
         ipl_converted = self.image_converter.Convert(ipl_image, output_pixel_format)
         numpy_image = ipl_converted.get_numpy_1D().copy()
 
-        self.current_frame = np.frombuffer(numpy_image, dtype=np.uint16).reshape(ipl_converted.Height(), ipl_converted.Width())
+        self.current_frame = np.frombuffer(numpy_image, dtype=np.uint16).reshape(
+            ipl_converted.Height(), ipl_converted.Width()
+        )
 
         self.datastream.QueueBuffer(buffer)
 
@@ -313,7 +321,7 @@ class Camera(object):
     def start_streaming(self, extra_buffer=1):
         if self.is_streaming:
             return
-        
+
         # Allocate image buffer for image acquisition
         self._revoke_buffer()
         self._allocate_buffer(extra_buffer)
@@ -327,15 +335,13 @@ class Camera(object):
         # while the acquisition is running
         # NOTE: Re-create the image converter, so old conversion buffers
         #       get freed
-        input_pixel_format = ids_peak_ipl.PixelFormat(
-            self.nodemap.FindNode("PixelFormat").CurrentEntry().Value())
-        if self.pixel_format == 'MONO10':
+        input_pixel_format = ids_peak_ipl.PixelFormat(self.nodemap.FindNode("PixelFormat").CurrentEntry().Value())
+        if self.pixel_format == "MONO10":
             output_pixel_format = ids_peak_ipl.PixelFormatName_Mono10
-        elif self.pixel_format == 'MONO12':
+        elif self.pixel_format == "MONO12":
             output_pixel_format = ids_peak_ipl.PixelFormatName_Mono12
 
-        self.image_converter.PreAllocateConversion(
-            input_pixel_format, output_pixel_format, self.Width, self.Height)
+        self.image_converter.PreAllocateConversion(input_pixel_format, output_pixel_format, self.Width, self.Height)
 
         self.datastream.StartAcquisition()
         self.nodemap.FindNode("AcquisitionStart").Execute()
@@ -393,128 +399,4 @@ class Camera(object):
                 self.log.error("stop_streaming error", e)
 
     def set_ROI(self, offset_x=None, offset_y=None, width=None, height=None):
-        pass
-
-
-class Camera_Simulation(object):
-    
-    def __init__(self, sn=None, is_global_shutter=False, rotate_image_angle=None, flip_image=None):
-        self.log = squid.logging.get_logger(self.__class__.__name__
-                                            )
-        # many to be purged
-        self.sn = sn
-        self.is_global_shutter = is_global_shutter
-        self.device_info_list = None
-        self.device_index = 0
-        self.camera = None
-        self.is_color = None
-        self.gamma_lut = None
-        self.contrast_lut = None
-        self.color_correction_param = None
-
-        self.rotate_image_angle = rotate_image_angle
-        self.flip_image = flip_image
-
-        self.exposure_time = 0
-        self.analog_gain = 0
-        self.frame_ID = 0
-        self.frame_ID_software = -1
-        self.frame_ID_offset_hardware_trigger = 0
-        self.timestamp = 0
-
-        self.image_locked = False
-        self.current_frame = None
-
-        self.callback_is_enabled = False
-        self.is_streaming = False
-
-        self.GAIN_MAX = 0
-        self.GAIN_MIN = 0
-        self.GAIN_STEP = 0
-        self.EXPOSURE_TIME_MS_MIN = 0.01
-        self.EXPOSURE_TIME_MS_MAX = 4000
-
-        self.trigger_mode = None
-
-        self.pixel_format = 'MONO12'
-
-        self.is_live = False
-
-        self.Width = 1920
-        self.Height = 1080
-        self.WidthMax = 1920
-        self.HeightMax = 1080
-        self.OffsetX = 0
-        self.OffsetY = 0
-
-        self.new_image_callback_external = None
-
-    def open(self, index=0):
-        pass
-
-    def set_callback(self, function):
-        self.new_image_callback_external = function
-
-    def enable_callback(self):
-        self.callback_is_enabled = True
-
-    def disable_callback(self):
-        self.callback_is_enabled = False
-
-    def open_by_sn(self, sn):
-        pass
-
-    def close(self):
-        pass
-
-    def set_exposure_time(self, exposure_time):
-        pass
-
-    def set_analog_gain(self, analog_gain):
-        pass
-
-    def start_streaming(self):
-        self.frame_ID_software = 0
-
-    def stop_streaming(self):
-        pass
-
-    def set_pixel_format(self, pixel_format):
-        self.pixel_format = pixel_format
-        self.log.info(f"pixel_format={pixel_format}")
-        self.frame_ID = 0
-
-    def set_continuous_acquisition(self):
-        pass
-
-    def set_software_triggered_acquisition(self):
-        pass
-
-    def set_hardware_triggered_acquisition(self):
-        pass
-
-    def send_trigger(self):
-        self.log.info('send trigger')
-        self.frame_ID = self.frame_ID + 1
-        self.timestamp = time.time()
-        if self.frame_ID == 1:
-            self.current_frame = np.random.randint(255, size=(2000,2000), dtype=np.uint8)
-            self.current_frame[901:1100,901:1100] = 200
-        else:
-            self.current_frame = np.roll(self.current_frame, 10, axis=0)
-            pass 
-            # self.current_frame = np.random.randint(255,size=(768,1024),dtype=np.uint8)
-        if self.new_image_callback_external is not None and self.callback_is_enabled:
-            self.new_image_callback_external(self)
-
-    def read_frame(self):
-        return self.current_frame
-
-    def _on_frame_callback(self, user_param, raw_image):
-        pass
-
-    def set_ROI(self, offset_x=None, offset_y=None, width=None, height=None):
-        pass
-
-    def set_line3_to_strobe(self):
         pass

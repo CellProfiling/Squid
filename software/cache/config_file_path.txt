@@ -1,1 +1,0 @@
-/home/lundberg/Github/decode-robot/robot/hardware/microscopes/Squid/software/configuration_Squid+.ini

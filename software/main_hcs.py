@@ -3,6 +3,7 @@ import argparse
 import glob
 import logging
 import os
+
 os.environ["QT_API"] = "pyqt5"
 import signal
 import sys
@@ -12,14 +13,20 @@ from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
 import squid.logging
+
 squid.logging.setup_uncaught_exception_logging()
 
 # app specific libraries
 import control.gui_hcs as gui
 from configparser import ConfigParser
-from control.widgets import ConfigEditorBackwardsCompatible, ConfigEditorForAcquisitions
+from control.widgets import ConfigEditorBackwardsCompatible
 from control._def import CACHED_CONFIG_FILE_PATH
-from control.console import ConsoleThread
+from control._def import USE_TERMINAL_CONSOLE
+import control.utils
+
+
+if USE_TERMINAL_CONSOLE:
+    from control.console import ConsoleThread
 
 
 def show_config(cfp, configpath, main_gui):
@@ -27,19 +34,19 @@ def show_config(cfp, configpath, main_gui):
     config_widget.exec_()
 
 
+"""
+# Planning to replace this with a better design
 def show_acq_config(cfm):
     acq_config_widget = ConfigEditorForAcquisitions(cfm)
     acq_config_widget.exec_()
+"""
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--simulation", help="Run the GUI with simulated hardware.", action='store_true')
-    parser.add_argument("--live-only", help="Run the GUI only the live viewer.", action='store_true')
+    parser.add_argument("--simulation", help="Run the GUI with simulated hardware.", action="store_true")
+    parser.add_argument("--live-only", help="Run the GUI only the live viewer.", action="store_true")
     parser.add_argument("--verbose", help="Turn on verbose logging (DEBUG level)", action="store_true")
     args = parser.parse_args()
-    
-    if args.simulation:
-        os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
     log = squid.logging.get_logger("main_hcs")
 
@@ -51,43 +58,41 @@ if __name__ == "__main__":
         log.error("Couldn't setup logging to file!")
         sys.exit(1)
 
+    log.info(f"Squid Repository State: {control.utils.get_squid_repo_state_description()}")
+
     legacy_config = False
     cf_editor_parser = ConfigParser()
-    config_files = glob.glob('.' + '/' + 'configuration*.ini')
+    config_files = glob.glob("." + "/" + "configuration*.ini")
     if config_files:
         cf_editor_parser.read(CACHED_CONFIG_FILE_PATH)
     else:
-        log.error('configuration*.ini file not found, defaulting to legacy configuration')
+        log.error("configuration*.ini file not found, defaulting to legacy configuration")
         legacy_config = True
     app = QApplication([])
-    app.setStyle('Fusion')
+    app.setStyle("Fusion")
     # This allows shutdown via ctrl+C even after the gui has popped up.
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     win = gui.HighContentScreeningGui(is_simulation=args.simulation, live_only_mode=args.live_only)
-    win.togglePerformanceMode()
 
-    screen_geometry = app.desktop().screenGeometry()
-    screen_width = screen_geometry.width()
-    screen_height = screen_geometry.height()
-    win.setMaximumSize(screen_width, screen_height)
-    win.resize(int(screen_width*0.8), int(screen_height*0.8))
-
+    """
+    # Planning to replace this with a better design
     acq_config_action = QAction("Acquisition Settings", win)
-    acq_config_action.triggered.connect(lambda : show_acq_config(win.configurationManager))
+    acq_config_action.triggered.connect(lambda: show_acq_config(win.configurationManager))
+    """
 
     file_menu = QMenu("File", win)
-    file_menu.addAction(acq_config_action)
+    # file_menu.addAction(acq_config_action)
 
     if not legacy_config:
         config_action = QAction("Microscope Settings", win)
-        config_action.triggered.connect(lambda : show_config(cf_editor_parser, config_files[0], win))
+        config_action.triggered.connect(lambda: show_config(cf_editor_parser, config_files[0], win))
         file_menu.addAction(config_action)
 
     try:
         csw = win.cswWindow
         if csw is not None:
-            csw_action = QAction("Camera Settings",win)
+            csw_action = QAction("Camera Settings", win)
             csw_action.triggered.connect(csw.show)
             file_menu.addAction(csw_action)
     except AttributeError:
@@ -106,11 +111,9 @@ if __name__ == "__main__":
     menu_bar.addMenu(file_menu)
     win.show()
 
-    console_locals = {
-        'microscope': win.microscope
-    }
-
-    console_thread = ConsoleThread(console_locals)
-    console_thread.start()
+    if USE_TERMINAL_CONSOLE:
+        console_locals = {"microscope": win.microscope}
+        console_thread = ConsoleThread(console_locals)
+        console_thread.start()
 
     sys.exit(app.exec_())

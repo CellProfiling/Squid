@@ -1,1 +1,0 @@
-{"objective": "10x", "wellplate_format": "24 well plate"}
