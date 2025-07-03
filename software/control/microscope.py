@@ -446,6 +446,20 @@ class Microscope(QObject):
         self.multipointController.set_selected_configurations(channels)
         self.multipointController.start_new_experiment(experiment_ID)
         self.multipointController.run_acquisition()
+        
+    def set_illumination_intensity(self, channel, intensity, objective=None):
+        if objective is None:
+            objective = self.objectiveStore.current_objective
+        channel_config = self.channelConfigurationManager.get_channel_configuration_by_name(objective, channel)
+        channel_config.illumination_intensity = intensity
+        self.liveController.set_microscope_mode(channel_config)
+
+    def set_exposure_time(self, channel, exposure_time, objective=None):
+        if objective is None:
+            objective = self.objectiveStore.current_objective
+        channel_config = self.channelConfigurationManager.get_channel_configuration_by_name(objective, channel)
+        channel_config.exposure_time = exposure_time
+        self.liveController.set_microscope_mode(channel_config)
 
 
 class ScanCoordinatesSiLA2:
