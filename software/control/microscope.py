@@ -431,12 +431,12 @@ class Microscope(QObject):
             wellplate_format, selected, scan_size_mm, overlap_percent
         )
 
-    def perform_scanning(self, path, experiment_ID, z_pos_um, channels, use_laser_af=False):
+    def perform_scanning(self, path, experiment_ID, z_pos_um, channels, use_laser_af=False, dz=1.5, Nz=1):
         if self.scanCoordinates is not None:
             self.multipointController.scanCoordinates = self.scanCoordinates
         self.move_z_to(z_pos_um / 1000)
-        dz = 1.5  # um
-        Nz = 1
+        #dz = 1.5  # um
+        #Nz = 1
         self.multipointController.set_deltaZ(dz)
         self.multipointController.set_NZ(Nz)
         self.multipointController.set_z_range(z_pos_um / 1000, z_pos_um / 1000 + dz / 1000 * (Nz - 1))
@@ -460,7 +460,15 @@ class Microscope(QObject):
         channel_config = self.channelConfigurationManager.get_channel_configuration_by_name(objective, channel)
         channel_config.exposure_time = exposure_time
         self.liveController.set_microscope_mode(channel_config)
-
+        
+    def laser_autofocus_set_ref(self):
+        success = self.laserAutofocusController.set_reference()
+        print(f"Laser autofocus reference set: {success}")
+        
+    def initialize_laser_autofocus(self):
+        success = self.laserAutofocusController.initialize_auto()
+        if not success:
+            raise RuntimeError("Failed to initialize laser autofocus. Please check the setup and try again.")
 
 class ScanCoordinatesSiLA2:
     def __init__(self, objectiveStore):
