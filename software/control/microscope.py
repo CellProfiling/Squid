@@ -58,6 +58,7 @@ class Microscope(QObject):
             self.multipointController = microscope.multipointController
             self.illuminationController = microscope.illuminationController
             self.performance_mode = microscope.performance_mode
+            self.channelConfigurationManager = microscope.channelConfigurationManager
 
             if SUPPORT_LASER_AUTOFOCUS:
                 self.laserAutofocusController = microscope.laserAutofocusController
