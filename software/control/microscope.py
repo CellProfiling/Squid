@@ -331,7 +331,9 @@ class Microscope(QObject):
             )
 
     def set_channel(self, channel):
-        self.liveController.set_channel(channel)
+        objective = self.objectiveStore.current_objective
+        channel_config = self.channelConfigurationManager.get_channel_configuration_by_name(objective, channel)
+        self.liveController.set_microscope_mode(channel_config)
 
     def acquire_image(self):
         # turn on illumination and send trigger
