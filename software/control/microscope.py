@@ -57,7 +57,9 @@ class Microscope(QObject):
             self.liveController = microscope.liveController
             self.multipointController = microscope.multipointController
             self.illuminationController = microscope.illuminationController
-            self.performance_mode = microscope.performance_mode
+            #self.performance_mode = microscope.performance_mode
+            self.performance_mode = True
+            microscope.performance_mode = True  # Ensure performance mode is set
             self.channelConfigurationManager = microscope.channelConfigurationManager
 
             if SUPPORT_LASER_AUTOFOCUS:
@@ -84,6 +86,8 @@ class Microscope(QObject):
 
             if USE_XERYON:
                 self.objective_changer = microscope.objective_changer
+                
+            self.scanCoordinates = None
 
     def initialize_camera(self, is_simulation):
         def acquisition_camera_hw_trigger_fn(illumination_time: Optional[float]) -> bool:
