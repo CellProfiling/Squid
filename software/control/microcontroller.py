@@ -6,10 +6,11 @@ import time
 from abc import abstractmethod
 from typing import Callable
 
+
 import numpy as np
 import serial
 import serial.tools.list_ports
-from crc import CrcCalculator, Crc8
+import crc
 from serial.serialutil import SerialException
 
 import squid.logging
@@ -142,14 +143,12 @@ class SimSerial(AbstractCephlaMicroSerial):
         - reserved (4 bytes)
         - CRC (1 byte)
         """
-        crc_calculator = CrcCalculator(Crc8.CCITT, table_based=True)
-
         button_state = joystick_button << BIT_POS_JOYSTICK_BUTTON | switch << BIT_POS_SWITCH
         reserved_state = 0  # This is just filler for the 4 reserved bytes.
         response = bytearray(
             struct.pack(">BBiiiiBi", command_id, execution_status, x, y, z, theta, button_state, reserved_state)
         )
-        response.append(crc_calculator.calculate_checksum(response))
+        response.append(crc.Calculator(crc.Crc8.CCITT).checksum(response))
         return bytes(response)
 
     def __init__(self):
@@ -492,7 +491,7 @@ class Microcontroller:
         self.last_command_send_timestamp = time.time()
         self.last_command_aborted_error = None
 
-        self.crc_calculator = CrcCalculator(Crc8.CCITT, table_based=True)
+    # No longer needed: self.crc_calculator = CrcCalculator(Crc8.CCITT, table_based=True)
         self.retry = 0
 
         self.new_packet_callback_external = None
@@ -1003,7 +1002,7 @@ class Microcontroller:
     def send_command(self, command):
         self._cmd_id = (self._cmd_id + 1) % 256
         command[0] = self._cmd_id
-        command[-1] = self.crc_calculator.calculate_checksum(command[:-1])
+        command[-1] = crc.Calculator(crc.Crc8.CCITT).checksum(command[:-1])
         self._serial.write(command, reconnect_tries=Microcontroller.MAX_RECONNECT_COUNT)
         self.mcu_cmd_execution_in_progress = True
         self.last_command = command
@@ -1042,7 +1041,6 @@ class Microcontroller:
             self.abort_current_command("Resend last requested with no last command")
 
     def read_received_packet(self):
-        crc_calculator = CrcCalculator(Crc8.CCITT, table_based=True)
         last_watchdog_fail_report = time.time()
         watchdog_fail_report_period = 5.0
 
@@ -1081,7 +1079,7 @@ class Microcontroller:
                         if len(maybe_msg) < self.rx_buffer_length:
                             continue
 
-                        checksum = crc_calculator.calculate_checksum(maybe_msg[:-1])
+                        checksum = crc.Calculator(crc.Crc8.CCITT).checksum(bytes(maybe_msg[:-1]))
                         # NOTE(imo): Before April 2025, we didn't send the crc from the micro.  This is
                         # here to support firmware that still sends 0 as the checksum.  This means for
                         # the firmware that does support checksums, we can get fooled by zeros!
